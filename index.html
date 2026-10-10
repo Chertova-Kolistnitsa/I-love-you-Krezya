@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <title>Love</title>
+<style>
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #2a0a1e 0%, #000 80%);
+    font-family: 'Segoe UI', 'Georgia', serif;
+  }
+  canvas { display: block; }
+
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .shape-bar {
+    position: fixed; top: 50%; left: 14px; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 10; user-select: none;
+    max-height: 94vh; overflow-y: auto; padding-right: 4px;
+  }
+  .shape-bar::-webkit-scrollbar { width: 4px; }
+  .shape-bar::-webkit-scrollbar-thumb { background: rgba(249,168,212,0.4); border-radius: 4px; }
+  .shape-btn {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,200,225,0.25);
+    color: #f9a8d4; font-size: 20px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; backdrop-filter: blur(6px);
+    transition: all 0.2s ease; padding: 0;
+    flex-shrink: 0;
+  }
+  .shape-btn:hover {
+    background: rgba(244,114,182,0.18);
+    border-color: rgba(249,168,212,0.7); transform: scale(1.08);
+  }
+  .shape-btn.active {
+    background: rgba(244,114,182,0.3);
+    border-color: #f9a8d4;
+    box-shadow: 0 0 18px rgba(244,114,182,0.6);
+  }
+
+  .top-bar {
+    position: fixed; top: 14px; right: 14px; z-index: 10;
+    display: flex; gap: 8px; align-items: center;
+    font-size: 13px; color: rgba(255,200,225,0.85);
+    flex-wrap: wrap; justify-content: flex-end;
+    max-width: 70vw;
+  }
+  .top-btn {
+    padding: 8px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,200,225,0.25);
+    color: #f9a8d4; font-size: 12px; cursor: pointer;
+    backdrop-filter: blur(6px); transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .top-btn:hover { background: rgba(244,114,182,0.18); border-color: #f9a8d4; }
+  .top-btn.active { background: rgba(244,114,182,0.3); border-color: #f9a8d4; }
+
+  /* Пасхалка */
+  .easter-egg {
+    position: fixed; z-index: 15;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    transform: scale(0.5);
+    pointer-events: none;
+    filter: drop-shadow(0 0 6px #f472b6);
+    animation: eggPulse 1.6s ease-in-out infinite;
+  }
+  .easter-egg.show {
+    opacity: 0.85;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+  @keyframes eggPulse {
+    0%,100% { filter: drop-shadow(0 0 6px #f472b6) brightness(1); }
+    50%     { filter: drop-shadow(0 0 14px #f472b6) brightness(1.4); }
+  }
+
+  .combo-display {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    color: #f9a8d4; font: bold 24px 'Segoe UI', sans-serif;
+    text-shadow: 0 0 20px #f472b6;
+    pointer-events: none; z-index: 50;
+    opacity: 0; transition: opacity .5s ease, transform .5s ease;
+  }
+  .combo-display.show { opacity: 1; transform: translateX(-50%) scale(1.1); }
+
+  .hint {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,200,225,0.7); font-size: 14px; letter-spacing: 1px;
+    pointer-events: none; user-select: none;
+    animation: pulse 3.4s ease-in-out infinite;
+    z-index: 10;
+  }
+  @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:.95} }
+
+  .sound-prompt {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 100;
+    padding: 20px 30px; border-radius: 16px;
+    background: rgba(30, 5, 20, 0.9);
+    border: 1.5px solid #f9a8d4;
+    color: #fce7f3; text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+    box-shadow: 0 0 40px rgba(244,114,182,0.5);
+    cursor: pointer;
+  }
+  .sound-prompt h3 { margin: 0 0 8px; font-size: 18px; font-weight: 400; }
+  .sound-prompt p  { margin: 0; font-size: 13px; color: #f9a8d4; }
+
+  /* Оверлей помощи */
+  .help-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(10, 0, 8, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .help-overlay.open { display: flex; animation: helpFade .5s ease; }
+  @keyframes helpFade { from { opacity: 0; } to { opacity: 1; } }
+
+  .help-panel {
+    max-width: 720px; width: 100%; max-height: 90vh;
+    overflow-y: auto; padding: 28px 32px; border-radius: 20px;
+    background: linear-gradient(180deg, rgba(45,8,30,0.95), rgba(20,3,15,0.95));
+    border: 1.5px solid #f9a8d4;
+    box-shadow: 0 0 60px rgba(244,114,182,0.5);
+    color: #fce7f3; font-family: 'Segoe UI', sans-serif;
+  }
+  .help-panel::-webkit-scrollbar { width: 6px; }
+  .help-panel::-webkit-scrollbar-thumb { background: rgba(249,168,212,0.5); border-radius: 3px; }
+
+  .help-panel h2 {
+    margin: 0 0 6px; font-size: 22px; font-weight: 400;
+    letter-spacing: 1px; color: #f9a8d4;
+    text-shadow: 0 0 20px rgba(244,114,182,0.6);
+  }
+  .help-panel .help-sub {
+    margin: 0 0 22px; font-size: 13px; color: rgba(255,200,225,0.65);
+  }
+  .help-section {
+    margin-bottom: 22px; padding-bottom: 18px;
+    border-bottom: 1px solid rgba(249,168,212,0.15);
+  }
+  .help-section:last-of-type { border-bottom: none; padding-bottom: 0; }
+  .help-section h3 {
+    margin: 0 0 12px; font-size: 15px; font-weight: 500;
+    color: #f9a8d4; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .help-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 7px 0; font-size: 14px; line-height: 1.5;
+  }
+  .help-key {
+    flex-shrink: 0; min-width: 90px; padding: 3px 10px;
+    border-radius: 8px; background: rgba(249,168,212,0.15);
+    border: 1px solid rgba(249,168,212,0.35);
+    color: #f9a8d4; font-size: 12px;
+    text-align: center; white-space: nowrap;
+  }
+  .help-desc { color: rgba(255,240,250,0.92); flex: 1; }
+  .help-desc em { color: #f9a8d4; font-style: normal; font-weight: 500; }
+  .help-close {
+    margin-top: 18px; padding: 12px 26px; border-radius: 12px;
+    background: rgba(244,114,182,0.25);
+    border: 1.5px solid #f9a8d4;
+    color: #fce7f3; font-size: 14px; cursor: pointer;
+    transition: all 0.2s ease; width: 100%;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .help-close:hover {
+    background: rgba(244,114,182,0.45);
+    box-shadow: 0 0 24px rgba(244,114,182,0.6);
+  }
+
+  /* ===== СЮЖЕТ: письма-квест ===== */
+  .letter {
+    position: fixed; z-index: 16;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    transform: scale(0.4) rotate(-15deg);
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px #f9a8d4) drop-shadow(0 0 20px #f472b6);
+    animation: letterFloat 3s ease-in-out infinite;
+  }
+  .letter.show {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+    pointer-events: auto;
+  }
+  .letter:hover {
+    transform: scale(1.2) rotate(5deg);
+  }
+  @keyframes letterFloat {
+    0%,100% { transform: translateY(0) rotate(-2deg); }
+    50%     { transform: translateY(-8px) rotate(2deg); }
+  }
+
+  /* Индикатор прогресса писем */
+  .letter-progress {
+    position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; z-index: 10;
+    pointer-events: none;
+  }
+  .letter-slot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(249,168,212,0.4);
+    transition: all 0.4s ease;
+  }
+  .letter-slot.filled {
+    background: #f472b6;
+    box-shadow: 0 0 12px #f472b6;
+    border-color: #fce7f3;
+  }
+
+  /* Диалоговое окно письма */
+  .letter-modal {
+    position: fixed; inset: 0; z-index: 210;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(10, 0, 8, 0.75);
+    backdrop-filter: blur(6px);
+    padding: 24px;
+  }
+  .letter-modal.open {
+    display: flex;
+    animation: letterFadeIn .5s ease;
+  }
+  @keyframes letterFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .letter-card {
+    max-width: 520px; width: 100%;
+    padding: 32px 36px;
+    border-radius: 20px;
+    background: linear-gradient(160deg,
+      rgba(60, 12, 40, 0.98),
+      rgba(25, 4, 18, 0.98));
+    border: 1.5px solid #f9a8d4;
+    box-shadow: 0 0 80px rgba(244,114,182,0.6);
+    color: #fce7f3;
+    font-family: 'Georgia', serif;
+    position: relative;
+    overflow: hidden;
+  }
+  .letter-card::before {
+    content: '';
+    position: absolute; inset: -2px;
+    border-radius: 22px;
+    background: linear-gradient(120deg,
+      transparent 30%, rgba(249,168,212,0.3) 50%, transparent 70%);
+    animation: letterShine 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes letterShine {
+    0%,100% { transform: translateX(-100%); }
+    50%     { transform: translateX(100%); }
+  }
+
+  .letter-card .letter-icon {
+    font-size: 40px;
+    text-align: center;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 0 16px #f472b6);
+  }
+  .letter-card .letter-chapter {
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: #f9a8d4;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .letter-card .letter-title {
+    font-size: 22px;
+    text-align: center;
+    margin: 0 0 20px;
+    color: #fce7f3;
+    font-weight: 400;
+    font-style: italic;
+  }
+  .letter-card .letter-text {
+    font-size: 16px;
+    line-height: 1.7;
+    color: rgba(255,235,248,0.95);
+    margin-bottom: 24px;
+    min-height: 100px;
+  }
+  .letter-card .letter-signature {
+    text-align: right;
+    font-style: italic;
+    color: #f9a8d4;
+    font-size: 14px;
+    margin-bottom: 20px;
+    opacity: 0;
+    transition: opacity 1s ease 0.6s;
+  }
+  .letter-card.signed .letter-signature { opacity: 1; }
+
+  .letter-card .letter-next {
+    display: block;
+    margin: 0 auto;
+    padding: 12px 32px;
+    border-radius: 12px;
+    background: rgba(244,114,182,0.3);
+    border: 1.5px solid #f9a8d4;
+    color: #fce7f3;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    transition: all 0.25s ease;
+  }
+  .letter-card .letter-next:hover {
+    background: rgba(244,114,182,0.5);
+    box-shadow: 0 0 24px rgba(244,114,182,0.7);
+  }
+
+  /* ===== ПРИЗНАНИЯ: отдельное окошко ===== */
+  .confession-modal {
+    position: fixed; inset: 0; z-index: 215;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(10, 0, 8, 0.8);
+    backdrop-filter: blur(8px);
+    padding: 24px;
+  }
+  .confession-modal.open {
+    display: flex;
+    animation: letterFadeIn .5s ease;
+  }
+  .confession-card {
+    max-width: 560px; width: 100%;
+    padding: 36px 40px 28px;
+    border-radius: 22px;
+    background: linear-gradient(165deg,
+      rgba(70, 15, 48, 0.98),
+      rgba(22, 4, 16, 0.98));
+    border: 1.5px solid #f9a8d4;
+    box-shadow: 0 0 90px rgba(244,114,182,0.65);
+    color: #fce7f3;
+    font-family: 'Georgia', serif;
+    position: relative;
+    overflow: hidden;
+  }
+  .confession-card::before {
+    content: '';
+    position: absolute; inset: -2px;
+    border-radius: 24px;
+    background: linear-gradient(120deg,
+      transparent 35%, rgba(249,168,212,0.28) 50%, transparent 65%);
+    animation: letterShine 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .confession-card .confession-icon {
+    font-size: 38px;
+    text-align: center;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 18px #f472b6);
+    animation: eggPulse 2.4s ease-in-out infinite;
+  }
+  .confession-card .confession-label {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: #f9a8d4;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    opacity: 0.85;
+  }
+  .confession-card .confession-text {
+    font-size: 17px;
+    line-height: 1.75;
+    color: rgba(255,240,250,0.97);
+    margin-bottom: 26px;
+    min-height: 120px;
+    font-style: italic;
+    text-align: center;
+  }
+  .confession-card .confession-counter {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255,200,225,0.55);
+    margin-bottom: 18px;
+  }
+  .confession-actions {
+    display: flex; gap: 10px; justify-content: center;
+    flex-wrap: wrap;
+  }
+  .confession-btn {
+    padding: 12px 26px;
+    border-radius: 12px;
+    background: rgba(244,114,182,0.3);
+    border: 1.5px solid #f9a8d4;
+    color: #fce7f3;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    transition: all 0.25s ease;
+  }
+  .confession-btn:hover {
+    background: rgba(244,114,182,0.5);
+    box-shadow: 0 0 24px rgba(244,114,182,0.7);
+  }
+  .confession-btn.close {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(249,168,212,0.4);
+  }
+  .confession-btn.close:hover {
+    background: rgba(244,114,182,0.2);
+    border-color: #f9a8d4;
+  }
+
+  /* Финальная сцена */
+  .finale {
+    position: fixed; inset: 0; z-index: 220;
+    display: none; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(80, 15, 55, 0.98), rgba(10, 0, 8, 1));
+    padding: 24px;
+    text-align: center;
+  }
+  .finale.open {
+    display: flex;
+    animation: letterFadeIn 1.2s ease;
+  }
+  .finale-content {
+    max-width: 640px;
+    color: #fce7f3;
+    font-family: 'Georgia', serif;
+  }
+  .finale h1 {
+    font-size: 32px;
+    font-style: italic;
+    font-weight: 400;
+    color: #f9a8d4;
+    text-shadow: 0 0 30px #f472b6;
+    margin: 0 0 20px;
+    letter-spacing: 1px;
+    animation: finalePulse 3s ease-in-out infinite;
+  }
+  @keyframes finalePulse {
+    0%,100% { text-shadow: 0 0 30px #f472b6; }
+    50%     { text-shadow: 0 0 60px #f472b6, 0 0 90px #f9a8d4; }
+  }
+  .finale p {
+    font-size: 18px;
+    line-height: 1.8;
+    margin: 0 0 18px;
+    color: rgba(255,240,250,0.95);
+  }
+  .finale .finale-close {
+    margin-top: 24px;
+    padding: 14px 40px;
+    border-radius: 14px;
+    background: rgba(244,114,182,0.35);
+    border: 1.5px solid #f9a8d4;
+    color: #fce7f3;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    transition: all 0.25s ease;
+  }
+  .finale .finale-close:hover {
+    background: rgba(244,114,182,0.55);
+    box-shadow: 0 0 30px rgba(244,114,182,0.8);
+  }
+
+  .top-btn.replay {
+    background: rgba(244,114,182,0.2);
+    border-color: #f9a8d4;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="vignette"></div>
+
+<div class="shape-bar" id="shapeBar">
+  <button class="shape-btn active" data-shape="heart"     title="Сердце ❤️">❤️</button>
+  <button class="shape-btn"        data-shape="flower"    title="Цветочек 🌸">🌸</button>
+  <button class="shape-btn"        data-shape="star"      title="Звезда ⭐">⭐</button>
+  <button class="shape-btn"        data-shape="firework"  title="Фейерверк 🎆">🎆</button>
+  <button class="shape-btn"        data-shape="gift"      title="Подарок 🎁">🎁</button>
+  <button class="shape-btn"        data-shape="berry"     title="Клубника 🍓">🍓</button>
+  <button class="shape-btn"        data-shape="butterfly" title="Бабочка 🦋">🦋</button>
+  <button class="shape-btn"        data-shape="mushroom"  title="Грибок 🍄">🍄</button>
+  <button class="shape-btn"        data-shape="diamond"   title="Алмаз 💎">💎</button>
+  <button class="shape-btn"        data-shape="random"    title="Случайная 🎲">🎲</button>
+</div>
+
+<div class="top-bar">
+  <button class="top-btn active" id="autoBtn">Авто 🎆</button>
+  <button class="top-btn active" id="musicBtn">🎵</button>
+  <button class="top-btn" id="seasonBtn">🌸 Весна</button>
+  <button class="top-btn" id="rainbowBtn" title="Радужный режим">🌈</button>
+  <button class="top-btn" id="lyricsBtn" title="Признания в любви">💕 Признания</button>
+  <button class="top-btn replay" id="replayBtn" title="Перезапустить сюжет">📖</button>
+  <button class="top-btn" id="helpBtn" title="Все действия">❓</button>
+</div>
+
+<div class="combo-display" id="comboDisplay"></div>
+<div class="letter-progress" id="letterProgress"></div>
+
+<div class="hint">нажми в любом месте</div>
+
+<div class="sound-prompt" id="soundPrompt" style="display:none">
+  <h3>Включить музыку и звуки?</h3>
+  <p>нажми, чтобы разрешить 🔊</p>
+</div>
+
+<!-- Оверлей помощи -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-panel">
+    <h2>💗 Все действия</h2>
+    <p class="help-sub">нажми ❓ ещё раз или клик вне панели, чтобы закрыть</p>
+
+    <div class="help-section">
+      <h3>📖 Сюжет — «Пять писем»</h3>
+      <div class="help-row"><div class="help-key">💌 Письмо</div><div class="help-desc">Раз в 25–45 секунд на экране появляется светящийся конверт. Клик по нему — открывает главу истории</div></div>
+      <div class="help-row"><div class="help-key">Прогресс</div><div class="help-desc">5 кружочков внизу показывают, сколько писем собрано</div></div>
+      <div class="help-row"><div class="help-key">Финал</div><div class="help-desc">После всех 5 писем — финальная сцена с признанием</div></div>
+      <div class="help-row"><div class="help-key">📖</div><div class="help-desc">Кнопка в панели — перезапустить сюжет с начала</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>💕 Признания</h3>
+      <div class="help-row"><div class="help-key">💕 Признания</div><div class="help-desc">Открывает отдельное окошко с признаниями в любви. Кнопка «Ещё 💌» — следующее признание</div></div>
+      <div class="help-row"><div class="help-key">Закрыть</div><div class="help-desc">Кнопка, клик вне окна или <em>Esc</em></div></div>
+      <div class="help-row"><div class="help-key">Немецкие</div><div class="help-desc">Отдельные строки сами появляются на фоне каждые 2.6–5 сек</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>🎯 Взрывы</h3>
+      <div class="help-row"><div class="help-key">Клик</div><div class="help-desc">Взрыв выбранной фигуры в точке клика</div></div>
+      <div class="help-row"><div class="help-key">Двойной клик</div><div class="help-desc">3 фейерверка веером + фигура + вспышка + тряска экрана</div></div>
+      <div class="help-row"><div class="help-key">Двойной клик по иконке</div><div class="help-desc">Сюрприз: случайная фигура + фейерверки + звук</div></div>
+      <div class="help-row"><div class="help-key">Удержать иконку</div><div class="help-desc">Фигура постепенно растёт в центре экрана</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>🎨 Фигуры</h3>
+      <div class="help-row"><div class="help-key">1 · ❤️</div><div class="help-desc">Сердце</div></div>
+      <div class="help-row"><div class="help-key">2 · 🌸</div><div class="help-desc">Цветочек</div></div>
+      <div class="help-row"><div class="help-key">3 · ⭐</div><div class="help-desc">Звезда</div></div>
+      <div class="help-row"><div class="help-key">4 · 🎆</div><div class="help-desc">Фейерверк</div></div>
+      <div class="help-row"><div class="help-key">5 · 🎁</div><div class="help-desc">Подарок</div></div>
+      <div class="help-row"><div class="help-key">6 · 🍓</div><div class="help-desc">Клубника</div></div>
+      <div class="help-row"><div class="help-key">7 · 🦋</div><div class="help-desc">Бабочка</div></div>
+      <div class="help-row"><div class="help-key">8 · 🍄</div><div class="help-desc">Грибок</div></div>
+      <div class="help-row"><div class="help-key">9 · 💎</div><div class="help-desc">Алмаз</div></div>
+      <div class="help-row"><div class="help-key">0 · 🎲</div><div class="help-desc">Случайная фигура при каждом клике</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>✨ Особые режимы</h3>
+      <div class="help-row"><div class="help-key">🌈 Радужный</div><div class="help-desc">Каждый взрыв — случайный цвет из радуги + 5% шанс на <em>золотой</em> бонус</div></div>
+      <div class="help-row"><div class="help-key">Спираль</div><div class="help-desc">Каждый 7-й взрыв — частицы разлетаются</div></div>
+      <div class="help-row"><div class="help-key">Пасхалка</div><div class="help-desc">Раз в минуту на экране появляется <em>маленькое сердце</em>. Клик по нему — секретный взрыв</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>🎛 Верхняя панель</h3>
+      <div class="help-row"><div class="help-key">Авто 🎆</div><div class="help-desc">Автоматический фейерверк каждые 7–15 секунд</div></div>
+      <div class="help-row"><div class="help-key">🎵</div><div class="help-desc">Фоновая музыка со своими аккордами для каждого сезона</div></div>
+      <div class="help-row"><div class="help-key">🌸 Весна</div><div class="help-desc">Смена сезона — 8 палитр</div></div>
+      <div class="help-row"><div class="help-key">🌈</div><div class="help-desc">Радужный режим вкл/выкл</div></div>
+      <div class="help-row"><div class="help-key">💕 Признания</div><div class="help-desc">Отдельное окошко с признаниями в любви</div></div>
+      <div class="help-row"><div class="help-key">📖</div><div class="help-desc">Перезапустить сюжет с самого начала</div></div>
+      <div class="help-row"><div class="help-key">❓</div><div class="help-desc">Это окно помощи</div></div>
+    </div>
+
+    <div class="help-section">
+      <h3>💛💙 Особенности</h3>
+      <div class="help-row"><div class="help-key">Имена</div><div class="help-desc">Каждые 20 секунд одно из имён: <em>Крезька · Музаффар · Черри · Сю-сю · Муж · Котик</em></div></div>
+    </div>
+
+    <button class="help-close" id="helpClose">Закрыть (Esc)</button>
+  </div>
+</div>
+
+<!-- Модальное окно письма -->
+<div class="letter-modal" id="letterModal">
+  <div class="letter-card" id="letterCard">
+    <div class="letter-icon" id="letterIcon">💌</div>
+    <div class="letter-chapter" id="letterChapter">Глава I</div>
+    <h2 class="letter-title" id="letterTitle"></h2>
+    <div class="letter-text" id="letterText"></div>
+    <div class="letter-signature" id="letterSignature"></div>
+    <button class="letter-next" id="letterNext">Дальше</button>
+  </div>
+</div>
+
+<!-- Окно признаний -->
+<div class="confession-modal" id="confessionModal">
+  <div class="confession-card">
+    <div class="confession-icon">💕</div>
+    <div class="confession-label">Признание</div>
+    <div class="confession-text" id="confessionText"></div>
+    <div class="confession-counter" id="confessionCounter"></div>
+    <div class="confession-actions">
+      <button class="confession-btn" id="confessionNext">Ещё 💌</button>
+      <button class="confession-btn close" id="confessionClose">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Финальная сцена -->
+<div class="finale" id="finale">
+  <div class="finale-content">
+    <h1>Ты собрал все письма 💗</h1>
+    <p>Каждое из них это часть моей истории о любви к тебе.</p>
+    <p>Я рада, что в моей жизни есть такой человек, как ты.</p>
+    <p>Я люблю тебя, всем сердцем.</p>
+    <p style="font-size:22px; font-style:italic; color:#f9a8d4; margin-top:24px;">Я ведь достойна твоей любви?</p>
+    <button class="finale-close" id="finaleClose">Закрыть</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   БАЗА
+   ============================================================ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let width  = canvas.width  = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+  width  = canvas.width  = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+});
+
+/* ============================================================
+   СЕЗОННЫЕ ПАЛИТРЫ + МУЗЫКА
+   ============================================================ */
+const SEASONS = {
+  spring: {
+    name: "🌸 Весна",
+    pink:   ["#f472b6", "#ec4899", "#fb7185", "#f9a8d4", "#db2777"],
+    blue:   ["#86efac", "#4ade80", "#22c55e", "#bbf7d0", "#16a34a"],
+    glowPink: "244, 114, 182", glowBlue: "134, 239, 172",
+    chords: [
+      [261.63, 329.63, 392.00],
+      [293.66, 349.23, 440.00],
+      [329.63, 392.00, 493.88],
+      [349.23, 440.00, 523.25]
+    ]
+  },
+  summer: {
+    name: "☀️ Лето",
+    pink:   ["#fde047", "#facc15", "#fb923c", "#fbbf24", "#f59e0b"],
+    blue:   ["#22d3ee", "#06b6d4", "#67e8f9", "#0891b2", "#a5f3fc"],
+    glowPink: "253, 224, 71", glowBlue: "34, 211, 238",
+    chords: [
+      [261.63, 329.63, 392.00],
+      [392.00, 493.88, 587.33],
+      [440.00, 554.37, 659.25],
+      [349.23, 440.00, 523.25]
+    ]
+  },
+  ocean: {
+    name: "🌊 Океан",
+    pink:   ["#a5f3fc", "#67e8f9", "#22d3ee", "#06b6d4", "#0e7490"],
+    blue:   ["#60a5fa", "#3b82f6", "#1e40af", "#2563eb", "#1e3a8a"],
+    glowPink: "103, 232, 249", glowBlue: "37, 99, 235",
+    chords: [
+      [220.00, 277.18, 329.63],
+      [246.94, 311.13, 369.99],
+      [261.63, 329.63, 392.00],
+      [196.00, 246.94, 293.66]
+    ]
+  },
+  winter: {
+    name: "❄️ Зима",
+    pink:   ["#e0f2fe", "#bae6fd", "#f0f9ff", "#ffffff", "#93c5fd"],
+    blue:   ["#60a5fa", "#3b82f6", "#93c5fd", "#2563eb", "#bfdbfe"],
+    glowPink: "224, 242, 254", glowBlue: "96, 165, 250",
+    chords: [
+      [261.63, 392.00, 523.25],
+      [293.66, 440.00, 587.33],
+      [329.63, 493.88, 659.25],
+      [349.23, 523.25, 698.46]
+    ]
+  },
+  christmas: {
+    name: "🎄 Рождество",
+    pink:   ["#dc2626", "#ef4444", "#b91c1c", "#fca5a5", "#991b1b"],
+    blue:   ["#16a34a", "#22c55e", "#15803d", "#86efac", "#166534"],
+    glowPink: "220, 38, 38", glowBlue: "22, 163, 74",
+    chords: [
+      [523.25, 659.25, 783.99],
+      [587.33, 739.99, 880.00],
+      [659.25, 830.61, 987.77],
+      [523.25, 659.25, 783.99]
+    ]
+  },
+  halloween: {
+    name: "🎃 Хэллуин",
+    pink:   ["#f97316", "#fb923c", "#ea580c", "#fdba74", "#c2410c"],
+    blue:   ["#a855f7", "#9333ea", "#c084fc", "#7e22ce", "#6b21a8"],
+    glowPink: "249, 115, 22", glowBlue: "168, 85, 247",
+    chords: [
+      [220.00, 261.63, 329.63],
+      [207.65, 246.94, 311.13],
+      [196.00, 233.08, 293.66],
+      [174.61, 220.00, 261.63]
+    ]
+  },
+  autumn: {
+    name: "🍂 Осень",
+    pink:   ["#fb923c", "#f97316", "#f59e0b", "#fed7aa", "#ea580c"],
+    blue:   ["#be123c", "#9f1239", "#e11d48", "#fb7185", "#881337"],
+    glowPink: "251, 146, 60", glowBlue: "190, 18, 60",
+    chords: [
+      [293.66, 369.99, 440.00],
+      [261.63, 329.63, 392.00],
+      [220.00, 277.18, 329.63],
+      [233.08, 293.66, 349.23]
+    ]
+  },
+  night: {
+    name: "🌙 Ночь",
+    pink:   ["#f472b6", "#c026d3", "#a855f7", "#e879f9", "#7e22ce"],
+    blue:   ["#60a5fa", "#3b82f6", "#818cf8", "#2563eb", "#6366f1"],
+    glowPink: "192, 38, 211", glowBlue: "99, 102, 241",
+    chords: [
+      [174.61, 220.00, 261.63],
+      [196.00, 246.94, 293.66],
+      [220.00, 277.18, 329.63],
+      [164.81, 207.65, 246.94]
+    ]
+  }
+};
+
+const SEASON_ORDER = ["spring", "summer", "ocean", "winter", "christmas", "halloween", "autumn", "night"];
+let currentSeason = "spring";
+let PINK_SHADES   = SEASONS[currentSeason].pink;
+let BLUE_SHADES   = SEASONS[currentSeason].blue;
+
+/* Радужная палитра и золото */
+const RAINBOW_PALETTE = [
+  "#ef4444", "#f97316", "#eab308", "#22c55e",
+  "#06b6d4", "#3b82f6", "#a855f7", "#ec4899"
+];
+const GOLD_PALETTE = ["#fde047", "#facc15", "#fbbf24", "#f59e0b", "#fef08a"];
+
+let rainbowMode = false;
+
+/* ============================================================
+   ИМЕНА + НЕМЕЦКИЕ ПРИЗНАНИЯ (на фоне)
+   ============================================================ */
+const NAMES = ["Крезька", "Музаффар", "Черри", "Сю-сю", "Муж", "Котик"];
+
+const GERMAN_LOVE_LINES = [
+  "Ich liebe dich",
+  "Du bist mein Herz",
+  "Du bist meine Sonne",
+  "Du bist meine Welt",
+  "Ohne dich kann ich nicht leben",
+  "Mein Herz gehört dir",
+  "Für immer mit dir",
+  "Du bist mein Glück",
+  "Ich denke jeden Tag an dich",
+  "Du bist mein Traum",
+  "Ich vermisse dich",
+  "Bleib immer an meiner Seite",
+  "Du bist mein Ein und Alles",
+  "Ich atme für dich",
+  "In deinen Augen verliere ich mich",
+  "Du bist mein Schatz",
+  "Ich bin nur mit dir glücklich",
+  "Du bist das Beste in meinem Leben",
+  "Mein Herz schlägt nur für dich",
+  "Ich liebe dich mehr als gestern",
+  "Du bist mein Licht",
+  "Ich sehne mich nach dir",
+  "Du bist mein Schicksal",
+  "Mit dir ist jeder Moment magisch",
+  "Dein Lächeln ist meine Sonne",
+  "Ich träume von dir jede Nacht",
+  "Du bist mein Leben",
+  "Ich gehöre nur dir",
+  "Nur du und ich für immer",
+  "Deine Liebe ist mein Zuhause"
+];
+
+function buildLyricsFor(name) {
+  const lines = [...GERMAN_LOVE_LINES];
+  lines.push(`${name}, ich liebe dich`);
+  lines.push(`${name}, du bist mein Herz`);
+  lines.push(`${name}, du bist meine Sonne`);
+  lines.push(`${name}, du bist meine Welt`);
+  lines.push(`${name}, für immer mit dir`);
+  lines.push(`${name}, meine Liebe`);
+  lines.push(`${name}, du bist mein Glück`);
+  lines.push(`${name}, bleib immer bei mir`);
+  return lines;
+}
+
+let LOVE_LYRICS = buildLyricsFor(NAMES[Math.floor(Math.random() * NAMES.length)]);
+
+/* ============================================================
+   ПРИЗНАНИЯ В ЛЮБВИ (отдельное окошко, русские)
+   ============================================================ */
+const CONFESSIONS = [
+  "Среди всего этого хаоса есть одна неизменная вещь — это мысли и разговоры с тобой, которые возвращают мне спокойствие и напоминают, что действительно важно.",
+  "Даже когда между нами километры, я всё равно чувствую твоё присутствие. Я смотрю на луну и знаю — ты смотришь тоже. Скучаю. Очень.",
+  "Моя любовь — это тайна, которую я унесу с собой. Ты — центр моей вселенной, в которой для меня самого никогда не было предусмотрено места.",
+  "Если бы меня спросили, какое воспоминание я хочу оставить навсегда, я бы выбрал тот момент, когда я впервые увидел твою улыбку.",
+  "Я ловлю себя на мысли, что постоянно ищу твой силуэт в толпе. Неужели уже слишком поздно?",
+  "Сегодня пошёл первый снег, я по привычке потянулся за телефоном, чтобы отправить фото. Мои пальцы замёрзли над экраном, так и не отправив ничего.",
+  "Ты — та единственная причина, по которой я до сих пор верю, что в этом мире есть что-то настоящее и тёплое.",
+  "Когда я думаю о тебе, время словно замедляется, и весь шум вокруг стихает. Остаёшься только ты — и это самое лучшее чувство.",
+  "Я не знаю, что будет завтра, но точно знаю одно: в моём «завтра» всегда есть место для тебя.",
+  "Каждую ночь я загадываю одно и то же желание. И каждое утро понимаю, что оно уже сбылось — потому что ты есть в моей жизни.",
+  "Ты — тот человек, рядом с которым мне не нужно быть кем-то другим. С тобой я настоящий.",
+  "Даже в самые тяжёлые дни одна мысль о тебе способна вернуть мне силы. Ты — моё тихое убежище.",
+  "Я не считаю дни до нашей встречи. Я считаю дни, проведённые с тобой, потому что каждый из них — подарок.",
+  "Если бы я мог выбрать одну суперспособность, я бы выбрал возможность быть рядом с тобой в любую минуту.",
+  "Ты — как любимая песня, которую хочется слушать снова и снова, и которая никогда не надоедает.",
+  "Я влюбляюсь в тебя заново каждый раз, когда слышу твой голос, вижу твою улыбку или просто вспоминаю о тебе.",
+  "Мир стал ярче с того момента, как ты вошёл в мою жизнь. И я не хочу возвращаться в серость.",
+  "Ты — не просто человек в моей жизни. Ты — та причина, по которой я хочу, чтобы эта жизнь была долгой."
+];
+
+let confessionIndex = 0;
+const confessionModal = document.getElementById('confessionModal');
+const confessionText = document.getElementById('confessionText');
+const confessionCounter = document.getElementById('confessionCounter');
+const confessionNext = document.getElementById('confessionNext');
+const confessionCloseBtn = document.getElementById('confessionClose');
+
+function showConfession() {
+  confessionText.style.opacity = "0";
+  confessionText.style.transform = "translateY(8px)";
+  setTimeout(() => {
+    confessionText.textContent = CONFESSIONS[confessionIndex];
+    confessionCounter.textContent = `${confessionIndex + 1} / ${CONFESSIONS.length}`;
+    confessionText.style.transition = "opacity .5s ease, transform .5s ease";
+    confessionText.style.opacity = "1";
+    confessionText.style.transform = "translateY(0)";
+  }, 180);
+}
+
+function openConfessions() {
+  confessionModal.classList.add('open');
+  lyricsBtn.classList.add('active');
+  showConfession();
+  if (soundEnabled) playTone(880, 0.3, "sine", 0.10);
+}
+
+function closeConfessions() {
+  confessionModal.classList.remove('open');
+  lyricsBtn.classList.remove('active');
+}
+
+confessionNext.addEventListener('click', () => {
+  confessionIndex = (confessionIndex + 1) % CONFESSIONS.length;
+  showConfession();
+  if (soundEnabled) playTone(1047, 0.25, "sine", 0.10);
+});
+
+confessionCloseBtn.addEventListener('click', closeConfessions);
+confessionModal.addEventListener('click', e => {
+  if (e.target === confessionModal) closeConfessions();
+});
+
+/* ============================================================
+   РИСОВАНИЕ СЕРДЕЧКА
+   ============================================================ */
+function drawHeart(ctx, x, y, size, color, rotation = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.scale(size / 16, size / 16);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, 5);
+  ctx.bezierCurveTo(0, 2,  -3, -2, -7, -2);
+  ctx.bezierCurveTo(-13, -2, -13, 6, -13, 6);
+  ctx.bezierCurveTo(-13, 10, -9, 14, 0, 20);
+  ctx.bezierCurveTo(9, 14, 13, 10, 13, 6);
+  ctx.bezierCurveTo(13, 6, 13, -2, 7, -2);
+  ctx.bezierCurveTo(3, -2, 0, 2, 0, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ============================================================
+   ФИГУРЫ
+   ============================================================ */
+function heartPoints(count) {
+  const pts = [];
+  for (let i = 0; i < count; i++) {
+    const t = (i / count) * Math.PI * 2;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = -(13 * Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t));
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+function flowerPoints(count) {
+  const pts = [];
+  const petals = 5, pr = 6.5, orbit = 8;
+  const per = Math.floor(count / petals);
+  for (let p = 0; p < petals; p++) {
+    const a0 = (p / petals) * Math.PI * 2 - Math.PI / 2;
+    const cx = Math.cos(a0) * orbit;
+    const cy = Math.sin(a0) * orbit;
+    for (let i = 0; i < per; i++) {
+      const a = (i / per) * Math.PI * 2;
+      pts.push({ x: cx + Math.cos(a) * pr, y: cy + Math.sin(a) * pr });
+    }
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function starPoints(count) {
+  const pts = [];
+  const spikes = 5, outerR = 15, innerR = 6.5, start = -Math.PI / 2;
+  const corners = [];
+  for (let i = 0; i < spikes * 2; i++) {
+    const a = start + (i / (spikes * 2)) * Math.PI * 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    corners.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+  }
+  const total = count;
+  const perSeg = Math.floor(total / corners.length);
+  for (let i = 0; i < corners.length; i++) {
+    const a = corners[i], b = corners[(i + 1) % corners.length];
+    const n = (i === corners.length - 1) ? total - pts.length : perSeg;
+    for (let j = 0; j < n; j++) {
+      const t = j / n;
+      pts.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function giftPoints(count) {
+  const pts = [];
+  const W = 10, H = 8, lidH = 2, bowR = 3.2;
+  const boxPath = [
+    { x: -W, y: -H - lidH }, { x:  W, y: -H - lidH },
+    { x:  W, y: -H }, { x:  W, y:  H },
+    { x: -W, y:  H }, { x: -W, y: -H },
+    { x: -W, y: -H - lidH }
+  ];
+  const boxPoints = Math.floor(count * 0.7);
+  const per = Math.floor(boxPoints / boxPath.length);
+  for (let i = 0; i < boxPath.length; i++) {
+    const a = boxPath[i];
+    const b = boxPath[(i + 1) % boxPath.length];
+    const n = (i === boxPath.length - 1) ? boxPoints - pts.length : per;
+    for (let j = 0; j < n; j++) {
+      const t = j / n;
+      pts.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+  }
+  const bowPoints = count - pts.length;
+  const half = Math.floor(bowPoints / 2);
+  const cy = -H - lidH - bowR + 1;
+  for (let i = 0; i < half; i++) {
+    const a = (i / half) * Math.PI * 2;
+    pts.push({ x: -bowR * 0.7 + Math.cos(a) * bowR, y: cy + Math.sin(a) * bowR * 0.85 });
+  }
+  for (let i = 0; i < bowPoints - half; i++) {
+    const a = (i / (bowPoints - half)) * Math.PI * 2;
+    pts.push({ x: bowR * 0.7 + Math.cos(a) * bowR, y: cy + Math.sin(a) * bowR * 0.85 });
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function berryPoints(count) {
+  const pts = [];
+  const R = 11;
+  const bodyPoints = Math.floor(count * 0.8);
+  for (let i = 0; i < bodyPoints; i++) {
+    const t = i / bodyPoints;
+    const a = -Math.PI / 2 + t * Math.PI * 2;
+    const squeeze = (Math.sin(a) > 0) ? (1 - Math.sin(a) * 0.55) : 1;
+    pts.push({ x: Math.cos(a) * R * squeeze, y: Math.sin(a) * R * 1.1 });
+  }
+  const leavesPoints = count - pts.length;
+  for (let i = 0; i < leavesPoints; i++) {
+    const t = i / leavesPoints;
+    const a = t * Math.PI * 2;
+    const r = 4 + Math.sin(a * 5) * 2.5;
+    pts.push({ x: Math.cos(a) * r, y: -R * 0.9 + Math.sin(a) * r * 0.5 });
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function butterflyPoints(count) {
+  const pts = [];
+  const bodyRX = 1.2, bodyRY = 9;
+  const wings = [
+    { cx: -6, cy: -4, rx: 6,   ry: 5.5, rot: -0.3, ratio: 0.28 },
+    { cx:  6, cy: -4, rx: 6,   ry: 5.5, rot:  0.3, ratio: 0.28 },
+    { cx:  5, cy:  5, rx: 4.5, ry: 4,   rot: -0.2, ratio: 0.18 },
+    { cx: -5, cy:  5, rx: 4.5, ry: 4,   rot:  0.2, ratio: 0.18 }
+  ];
+  const bodyCount = Math.floor(count * 0.08);
+  const wingsTotal = count - bodyCount;
+  const wingCounts = wings.map(w => Math.floor(wingsTotal * w.ratio / 0.92));
+  const sumW = wingCounts.reduce((a,b)=>a+b,0);
+  wingCounts[wingCounts.length - 1] += wingsTotal - sumW;
+  for (let k = 0; k < wings.length; k++) {
+    const w = wings[k];
+    const n = wingCounts[k];
+    const cosR = Math.cos(w.rot), sinR = Math.sin(w.rot);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      const lx = Math.cos(a) * w.rx, ly = Math.sin(a) * w.ry;
+      const rx = lx * cosR - ly * sinR;
+      const ry = lx * sinR + ly * cosR;
+      pts.push({ x: w.cx + rx, y: w.cy + ry });
+    }
+  }
+  for (let i = 0; i < bodyCount; i++) {
+    const t = i / bodyCount;
+    const a = -Math.PI / 2 + t * Math.PI * 2;
+    pts.push({ x: Math.cos(a) * bodyRX, y: Math.sin(a) * bodyRY });
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function mushroomPoints(count) {
+  const pts = [];
+  const capR = 11, capBaseY = -1, stemW = 3, stemBottomY = 12;
+  const capCount = Math.floor(count * 0.5);
+  const stemCount = count - capCount;
+  for (let i = 0; i < capCount; i++) {
+    const t = i / capCount;
+    const a = Math.PI + t * Math.PI;
+    pts.push({ x: Math.cos(a) * capR, y: capBaseY + Math.sin(a) * capR * 0.75 });
+  }
+  const perSide = Math.floor(stemCount / 3);
+  const rightCount = perSide, bottomCount = perSide;
+  const leftCount  = stemCount - rightCount - bottomCount;
+  for (let i = 0; i < rightCount; i++) {
+    const t = i / rightCount;
+    pts.push({ x: stemW, y: capBaseY + t * (stemBottomY - capBaseY) });
+  }
+  for (let i = 0; i < bottomCount; i++) {
+    const t = i / bottomCount;
+    pts.push({ x: stemW - t * stemW * 2, y: stemBottomY });
+  }
+  for (let i = 0; i < leftCount; i++) {
+    const t = i / leftCount;
+    pts.push({ x: -stemW, y: stemBottomY - t * (stemBottomY - capBaseY) });
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+function diamondPoints(count) {
+  const pts = [];
+  const topY = -10, topW = 8, midY = -2, midW = 12, bottomY = 14;
+  const segs = [0.15, 0.25, 0.35, 0.25];
+  const counts = segs.map(s => Math.floor(count * s));
+  counts[counts.length - 1] = count - counts.slice(0, -1).reduce((a,b)=>a+b,0);
+  for (let i = 0; i < counts[0]; i++) {
+    const t = i / counts[0];
+    pts.push({ x: -topW + t * topW * 2, y: topY });
+  }
+  for (let i = 0; i < counts[1]; i++) {
+    const t = i / counts[1];
+    pts.push({ x: topW + t * (midW - topW), y: topY + t * (midY - topY) });
+  }
+  const rightDown = Math.floor(counts[2] / 2);
+  const leftUp = counts[2] - rightDown;
+  for (let i = 0; i < rightDown; i++) {
+    const t = i / rightDown;
+    pts.push({ x: midW + t * (0 - midW), y: midY + t * (bottomY - midY) });
+  }
+  for (let i = 0; i < leftUp; i++) {
+    const t = i / leftUp;
+    pts.push({ x: 0 + t * (-midW - 0), y: bottomY + t * (midY - bottomY) });
+  }
+  for (let i = 0; i < counts[3]; i++) {
+    const t = i / counts[3];
+    pts.push({ x: -midW + t * (-topW + midW), y: midY + t * (topY - midY) });
+  }
+  while (pts.length < count) pts.push({ x: 0, y: 0 });
+  return pts.slice(0, count);
+}
+
+/* ============ РЕЕСТР ============ */
+const SHAPES = {
+  heart:     { fn: heartPoints,     scale: 6 },
+  flower:    { fn: flowerPoints,    scale: 6.5 },
+  star:      { fn: starPoints,      scale: 6.5 },
+  gift:      { fn: giftPoints,      scale: 6 },
+  berry:     { fn: berryPoints,     scale: 6.5 },
+  butterfly: { fn: butterflyPoints, scale: 6 },
+  mushroom:  { fn: mushroomPoints,  scale: 6 },
+  diamond:   { fn: diamondPoints,   scale: 6 }
+};
+
+let currentShape = "heart";
+
+/* ============================================================
+   ЗВУК
+   ============================================================ */
+let audioCtx = null;
+let soundEnabled = false;
+let musicGain = null;
+let musicPlaying = false;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = audioCtx.createGain();
+  musicGain.gain.value = 0.06;
+  musicGain.connect(audioCtx.destination);
+}
+
+function playTone(freq, duration, type = "sine", gainPeak = 0.15) {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const g   = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const now = audioCtx.currentTime;
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(gainPeak, now + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, now + duration * 1.5);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(now); osc.stop(now + duration * 1.5 + 0.02);
+}
+
+function playShapeSound(shape) {
+  if (!soundEnabled) return;
+  switch (shape) {
+    case "heart":     playTone(520, 0.45, "sine", 0.14); playTone(780, 0.35, "sine", 0.08); break;
+    case "flower":    playTone(660, 0.40, "triangle", 0.12); playTone(990, 0.30, "triangle", 0.07); break;
+    case "star":      playTone(880, 0.30, "square", 0.06); playTone(1320, 0.40, "square", 0.05); break;
+    case "firework":  playTone(120, 0.30, "sawtooth", 0.12); playTone(240, 0.20, "sawtooth", 0.08); break;
+    case "gift":      playTone(440, 0.25, "square", 0.10); playTone(660, 0.25, "square", 0.10); playTone(880, 0.40, "square", 0.08); break;
+    case "berry":     playTone(700, 0.30, "triangle", 0.10); break;
+    case "butterfly": playTone(659, 0.25, "triangle", 0.10); playTone(988, 0.40, "triangle", 0.08); break;
+    case "mushroom":  playTone(392, 0.30, "sine", 0.12); playTone(523, 0.45, "sine", 0.08); break;
+    case "diamond":   playTone(1200, 0.25, "sine", 0.10); playTone(1600, 0.40, "sine", 0.08); break;
+    default:          playTone(600, 0.35, "sine", 0.10);
+  }
+}
+
+function playSecret() {
+  if (!soundEnabled) return;
+  playTone(1047, 0.2, "sine", 0.15);
+  playTone(1319, 0.2, "sine", 0.15);
+  playTone(1568, 0.2, "sine", 0.15);
+  playTone(2093, 0.6, "sine", 0.15);
+}
+
+let musicTimer = null;
+let musicStep = 0;
+
+function playMusicChord() {
+  if (!soundEnabled || !audioCtx || !musicPlaying) return;
+  const chords = SEASONS[currentSeason].chords;
+  const chord = chords[musicStep % chords.length];
+  chord.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const now = audioCtx.currentTime;
+    const dur = 3.6 + i * 0.2;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.05, now + 0.8);
+    g.gain.linearRampToValueAtTime(0.001, now + dur);
+    osc.connect(g); g.connect(musicGain);
+    osc.start(now); osc.stop(now + dur + 0.1);
+  });
+  musicStep++;
+}
+function startMusic() {
+  if (musicTimer) return;
+  musicPlaying = true;
+  playMusicChord();
+  musicTimer = setInterval(playMusicChord, 3800);
+}
+function stopMusic() {
+  musicPlaying = false;
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+}
+function restartMusicIfPlaying() {
+  if (musicPlaying) { stopMusic(); startMusic(); }
+}
+
+/* ============================================================
+   ШЛЕЙФ ОТ КУРСОРА + ПУЗЫРЬКИ
+   ============================================================ */
+let lastMouse = { x: 0, y: 0, set: false };
+let mouseTick = 0;
+let bubbleTick = 0;
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  if (!lastMouse.set) { lastMouse = { x, y, set: true }; return; }
+  mouseTick++;
+
+  if (mouseTick % 6 === 0) {
+    const dx = x - lastMouse.x;
+    const dy = y - lastMouse.y;
+    if (Math.hypot(dx, dy) > 1.5) {
+      const p = new CircleParticle(x, y, dx * 0.3, dy * 0.3,
+        PINK_SHADES[Math.floor(Math.random() * PINK_SHADES.length)]);
+      p.maxLife = 70; p.life = 70; p.size = 2 + Math.random() * 1.5;
+      burstParticles.push(p);
+    }
+  }
+
+  bubbleTick++;
+  if (bubbleTick % 14 === 0) {
+    const b = new Bubble();
+    b.x = x; b.y = y;
+    b.r = 2 + Math.random() * 3;
+    b.vy = -(0.25 + Math.random() * 0.35);
+    b.vx = (Math.random() - 0.5) * 0.3;
+    b.alpha = 0.5 + Math.random() * 0.3;
+    b.wobble = Math.random() * Math.PI * 2;
+    b.colorIdx = Math.random() < 0.5 ? "pink" : "blue";
+    bubbles.push(b);
+  }
+
+  lastMouse = { x, y, set: true };
+});
+
+let mousePos = { x: width / 2, y: height / 2 };
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mousePos.x = e.clientX - rect.left;
+  mousePos.y = e.clientY - rect.top;
+});
+
+/* ============================================================
+   PRE-BURST
+   ============================================================ */
+function preBurst(cx, cy, palette) {
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.5 + Math.random() * 0.8;
+    const p = new CircleParticle(cx, cy, Math.cos(angle)*3, Math.sin(angle)*3, palette[0]);
+    p.vx = Math.cos(angle) * speed;
+    p.vy = Math.sin(angle) * speed;
+    p.maxLife = 40; p.life = 40; p.size = 1.5 + Math.random();
+    burstParticles.push(p);
+  }
+}
+
+/* ============================================================
+   ТРЯСКА ЭКРАНА
+   ============================================================ */
+let shakeAmount = 0;
+function shakeScreen(amount) {
+  shakeAmount = Math.max(shakeAmount, amount);
+}
+
+/* ============================================================
+   АДАПТИВНАЯ НАГРУЗКА
+   ============================================================ */
+let quality = 1.0;
+let fpsSamples = [];
+let lastFpsTime = performance.now();
+
+function trackFps() {
+  const now = performance.now();
+  const dt = now - lastFpsTime;
+  lastFpsTime = now;
+  const fps = 1000 / dt;
+  fpsSamples.push(fps);
+  if (fpsSamples.length > 60) fpsSamples.shift();
+  const avg = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
+  if (avg < 40 && quality > 0.4) { quality = Math.max(0.4, quality - 0.05); fpsSamples = []; }
+  else if (avg > 55 && quality < 1.0) { quality = Math.min(1.0, quality + 0.02); fpsSamples = []; }
+}
+
+/* ============================================================
+   КЛАССЫ ЧАСТИЦ
+   ============================================================ */
+class Particle {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.maxLife = 700; this.life = this.maxLife;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.04;
+    this.vx = (Math.random() - 0.5) * 0.2;
+    this.vy = -Math.random() * 0.25 - 0.05;
+    this.size = Math.random() * 8 + 6;
+    const pal = [...PINK_SHADES, ...BLUE_SHADES];
+    this.color = pal[Math.floor(Math.random() * pal.length)];
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.rotation += this.rotSpeed;
+    const dx = this.x - mousePos.x;
+    const dy = this.y - mousePos.y;
+    const d2 = dx*dx + dy*dy;
+    if (d2 < 140*140 && d2 > 1) {
+      const d = Math.sqrt(d2);
+      const force = (140 - d) / 140 * 0.03;
+      this.vx += (dx / d) * force;
+      this.vy += (dy / d) * force;
+    }
+    this.vx += (Math.random() - 0.5) * 0.02;
+    this.vy += (Math.random() - 0.5) * 0.02 - 0.003;
+    this.vx *= 0.995; this.vy *= 0.995;
+    this.life--;
+  }
+  draw(ctx) {
+    const a = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = a;
+    drawHeart(ctx, this.x, this.y, this.size, this.color, this.rotation);
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+class CircleParticle {
+  constructor(cx, cy, tx, ty, color) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = Math.random() * 12;
+    this.x = cx + Math.cos(angle) * dist;
+    this.y = cy + Math.sin(angle) * dist;
+    this.targetX = cx + tx;
+    this.targetY = cy + ty;
+    const dx = this.targetX - this.x;
+    const dy = this.targetY - this.y;
+    const s = 0.06;
+    this.vx = dx * s + (Math.random() - 0.5) * 0.3;
+    this.vy = dy * s + (Math.random() - 0.5) * 0.3;
+    this.color = color;
+    this.size  = Math.random() * 3 + 3;
+    this.maxLife = 260; this.life = this.maxLife;
+    this.damping = 0.978;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= this.damping; this.vy *= this.damping;
+    this.life--;
+  }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife;
+    let alpha;
+    if (t < 0.1) alpha = t / 0.1;
+    else if (t > 0.7) alpha = (1 - t) / 0.3;
+    else alpha = 1;
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+class FireworkSpark {
+  constructor(cx, cy, angle, speed, color) {
+    this.x = cx; this.y = cy;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.color = color;
+    this.size = Math.random() * 1.5 + 1;
+    this.trail = []; this.trailMax = 4;
+    this.maxLife = 90 + Math.floor(Math.random() * 40);
+    this.life = this.maxLife;
+    this.gravity = 0.03; this.drag = 0.99;
+  }
+  update() {
+    if (this.trail.length < this.trailMax) {
+      this.trail.push({ x: this.x, y: this.y });
+    } else {
+      const idx = this.maxLife - this.life;
+      this.trail[idx % this.trailMax] = { x: this.x, y: this.y };
+    }
+    this.vy += this.gravity;
+    this.vx *= this.drag; this.vy *= this.drag;
+    this.x += this.vx; this.y += this.vy;
+    this.life--;
+  }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife;
+    const a = t < 0.6 ? 1 : (1 - t) / 0.4;
+    if (this.trail.length > 1) {
+      ctx.globalAlpha = Math.max(0, a) * 0.55;
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = this.size * 0.9;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+      ctx.lineTo(this.x, this.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+class FireworkFlash {
+  constructor(x, y, color) {
+    this.x = x; this.y = y; this.color = color;
+    this.maxLife = 24; this.life = this.maxLife; this.maxR = 22;
+  }
+  update() { this.life--; }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife;
+    const r = this.maxR * Math.sin(t * Math.PI);
+    ctx.globalAlpha = 1 - t;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+function spawnFirework(cx, cy) {
+  const palette = Math.random() < 0.5 ? PINK_SHADES : BLUE_SHADES;
+  const COUNT = Math.floor(40 * quality);
+  for (let i = 0; i < COUNT; i++) {
+    const angle = (i / COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+    const speed = 1.4 + Math.random() * 2.0;
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    burstParticles.push(new FireworkSpark(cx, cy, angle, speed, color));
+  }
+  burstParticles.push(new FireworkFlash(cx, cy, palette[1]));
+}
+
+/* ============================================================
+   ТЕКСТ О ЛЮБВИ (немецкий) — плавает по экрану
+   ============================================================ */
+class LoveText {
+  constructor(x, y, text) {
+    this.x = x; this.y = y; this.text = text;
+    this.vx = (Math.random() - 0.5) * 0.2;
+    this.vy = -Math.random() * 0.2 - 0.08;
+    this.maxLife = 600; this.life = this.maxLife;
+    const base = 20;
+    const lenFactor = Math.max(0.55, 1 - (text.length - 10) * 0.02);
+    this.size = base * lenFactor + Math.random() * 6;
+    this.color = Math.random() < 0.5 ? "#f9a8d4" : "#93c5fd";
+    this.rot = (Math.random() - 0.5) * 0.25;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy *= 0.999; this.life--;
+  }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife;
+    let alpha;
+    if (t < 0.15) alpha = t / 0.15;
+    else if (t > 0.75) alpha = (1 - t) / 0.25;
+    else alpha = 1;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.fillStyle = this.color;
+    ctx.font = `italic ${this.size}px 'Georgia', 'Segoe UI', serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 14;
+    ctx.fillText(this.text, 0, 0);
+    ctx.restore();
+  }
+  get dead() { return this.life <= 0; }
+}
+
+const SHAPE_KEYS = Object.keys(SHAPES);
+
+let spiralCounter = 0;
+
+function spawnShapeBurst(cx, cy) {
+  let palette;
+  if (rainbowMode) {
+    if (Math.random() < 0.05) {
+      palette = GOLD_PALETTE;
+      shakeScreen(6);
+    } else {
+      palette = RAINBOW_PALETTE;
+    }
+  } else {
+    palette = Math.random() < 0.5 ? PINK_SHADES : BLUE_SHADES;
+  }
+
+  preBurst(cx, cy, palette);
+
+  let shapeForSound = currentShape;
+  if (currentShape === "random") {
+    shapeForSound = SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)];
+  }
+  playShapeSound(shapeForSound);
+
+  if (shapeForSound === "firework" || currentShape === "firework") {
+    spawnFirework(cx, cy);
+    return;
+  }
+
+  const key = currentShape === "random" ? shapeForSound : currentShape;
+  const shape = SHAPES[key];
+  if (!shape) return;
+
+  const POINTS = Math.floor(140 * quality);
+  const outline = shape.fn(POINTS);
+
+  spiralCounter++;
+  const useSpiral = (spiralCounter % 7 === 0);
+
+  if (useSpiral) {
+    const turns = 3;
+    const totalPoints = outline.length;
+    outline.forEach((pt, i) => {
+      const t = i / totalPoints;
+      const angle = t * Math.PI * 2 * turns;
+      const radius = t * 30;
+      const sx = Math.cos(angle) * radius;
+      const sy = Math.sin(angle) * radius;
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      burstParticles.push(new CircleParticle(cx, cy, sx, sy, color));
+    });
+    shakeScreen(4);
+  } else {
+    outline.forEach(pt => {
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      burstParticles.push(new CircleParticle(
+        cx, cy, pt.x * shape.scale, pt.y * shape.scale, color
+      ));
+    });
+  }
+}
+
+/* ============================================================
+   ФОН
+   ============================================================ */
+class GlowBlob {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = Math.random() * width;
+    this.y = initial ? Math.random() * height : height + 200;
+    this.r = Math.random() * 200 + 120;
+    this.vx = (Math.random() - 0.5) * 0.07;
+    this.vy = -(Math.random() * 0.07 + 0.02);
+    this.hue = Math.random() < 0.5 ? "pink" : "blue";
+    this.alpha = Math.random() * 0.08 + 0.04;
+    this.phase = Math.random() * Math.PI * 2;
+    this.pulseBoost = 0;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.phase += 0.005;
+    this.pulseBoost *= 0.97;
+    if (this.y < -this.r) this.reset();
+  }
+  draw(ctx) {
+    const season = SEASONS[currentSeason];
+    const pulse = (0.7 + 0.3 * Math.sin(this.phase)) * (1 + this.pulseBoost);
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    const c = this.hue === "pink"
+      ? `rgba(${season.glowPink}, ${this.alpha * pulse})`
+      : `rgba(${season.glowBlue}, ${this.alpha * pulse})`;
+    grad.addColorStop(0, c);
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+class Bubble {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = Math.random() * width;
+    this.y = initial ? Math.random() * height : height + 20;
+    this.r = Math.random() * 6 + 2;
+    this.vy = -(Math.random() * 0.3 + 0.1);
+    this.vx = (Math.random() - 0.5) * 0.15;
+    this.alpha = Math.random() * 0.5 + 0.15;
+    this.colorIdx = Math.random() < 0.5 ? "pink" : "blue";
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = Math.random() * 0.015 + 0.005;
+  }
+  update() {
+    this.wobble += this.wobbleSpeed;
+    this.x += this.vx + Math.sin(this.wobble) * 0.15;
+    this.y += this.vy;
+    if (this.y < -20) this.reset();
+  }
+  draw(ctx) {
+    const pal = this.colorIdx === "pink" ? PINK_SHADES : BLUE_SHADES;
+    const color = pal[0];
+    ctx.globalAlpha = this.alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = this.alpha * 0.9;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+class StarBg {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * width;
+    this.y = Math.random() * height;
+    this.r = Math.random() * 1.6 + 0.5;
+    this.phase = Math.random() * Math.PI * 2;
+    this.speed = Math.random() * 0.02 + 0.005;
+    this.colorIdx = Math.random() < 0.5 ? "pink" : "blue";
+  }
+  update() {
+    this.phase += this.speed;
+    this.y -= 0.02;
+    if (this.y < -5) { this.y = height + 5; this.x = Math.random() * width; }
+  }
+  draw(ctx) {
+    const pal = this.colorIdx === "pink" ? PINK_SHADES : BLUE_SHADES;
+    const color = pal[0];
+    const a = 0.3 + 0.7 * Math.abs(Math.sin(this.phase));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (this.r > 1.2) {
+      ctx.globalAlpha = a * 0.5;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(this.x - this.r * 2, this.y);
+      ctx.lineTo(this.x + this.r * 2, this.y);
+      ctx.moveTo(this.x, this.y - this.r * 2);
+      ctx.lineTo(this.x, this.y + this.r * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+const floatParticles = [];
+const burstParticles = [];
+const textParticles  = [];
+const glows   = [];
+const bubbles = [];
+const stars   = [];
+
+const FLOAT_COUNT  = 90;
+const GLOW_COUNT   = 6;
+const BUBBLE_COUNT = 45;
+const STAR_COUNT   = 90;
+
+for (let i = 0; i < FLOAT_COUNT; i++) {
+  const p = new Particle(Math.random() * width, Math.random() * height);
+  p.life = Math.random() * p.maxLife;
+  floatParticles.push(p);
+}
+for (let i = 0; i < GLOW_COUNT; i++)   glows.push(new GlowBlob());
+for (let i = 0; i < BUBBLE_COUNT; i++) bubbles.push(new Bubble());
+for (let i = 0; i < STAR_COUNT; i++)   stars.push(new StarBg());
+
+setInterval(() => {
+  const boost = 0.4 + Math.random() * 0.4;
+  glows.forEach(g => g.pulseBoost = boost);
+}, 2200);
+
+/* ============================================================
+   НЕМЕЦКИЕ ПРИЗНАНИЯ НА ФОНЕ
+   ============================================================ */
+function spawnRandomLyric() {
+  const text = LOVE_LYRICS[Math.floor(Math.random() * LOVE_LYRICS.length)];
+  const x = Math.random() * (width * 0.7) + width * 0.15;
+  const y = Math.random() * (height * 0.7) + height * 0.15;
+  textParticles.push(new LoveText(x, y, text));
+}
+
+function scheduleNextLyric() {
+  const delay = 2600 + Math.random() * 2400;
+  setTimeout(() => { spawnRandomLyric(); scheduleNextLyric(); }, delay);
+}
+setTimeout(spawnRandomLyric, 800);
+scheduleNextLyric();
+
+/* Смена имени каждые 20 секунд */
+setInterval(() => {
+  const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+  LOVE_LYRICS = buildLyricsFor(name);
+}, 20000);
+
+/* ============================================================
+   ПАНЕЛЬ ФИГУР + УДЕРЖАНИЕ + ДВОЙНОЙ КЛИК
+   ============================================================ */
+const shapeBar = document.getElementById('shapeBar');
+
+shapeBar.addEventListener('click', e => {
+  const btn = e.target.closest('.shape-btn');
+  if (!btn) return;
+  currentShape = btn.dataset.shape;
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+let holdTimer = null;
+let holdCount = 0;
+let holdShape = null;
+
+shapeBar.addEventListener('mousedown', e => {
+  const btn = e.target.closest('.shape-btn');
+  if (!btn) return;
+  holdShape = btn.dataset.shape;
+  holdCount = 0;
+  holdTimer = setInterval(() => {
+    holdCount++;
+    const cx = width / 2 + (Math.random() - 0.5) * 60;
+    const cy = height / 2 + (Math.random() - 0.5) * 60;
+    const shapeKey = holdShape === "random"
+      ? SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)]
+      : holdShape;
+    const shape = SHAPES[shapeKey];
+    if (!shape) return;
+    const palette = Math.random() < 0.5 ? PINK_SHADES : BLUE_SHADES;
+    const POINTS = Math.min(15 + holdCount * 2, 60);
+    const outline = shape.fn(POINTS);
+    outline.forEach(pt => {
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      burstParticles.push(new CircleParticle(
+        cx, cy, pt.x * shape.scale, pt.y * shape.scale, color
+      ));
+    });
+  }, 200);
+});
+shapeBar.addEventListener('mouseup', () => {
+  clearInterval(holdTimer);
+  holdTimer = null;
+  if (holdCount >= 3 && soundEnabled) playTone(880, 0.4, "sine", 0.12);
+  holdCount = 0;
+});
+shapeBar.addEventListener('mouseleave', () => {
+  clearInterval(holdTimer);
+  holdTimer = null;
+  holdCount = 0;
+});
+
+shapeBar.addEventListener('dblclick', e => {
+  const btn = e.target.closest('.shape-btn');
+  if (!btn) return;
+  e.preventDefault();
+
+  const cx = width / 2, cy = height / 2;
+
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    spawnFirework(cx + Math.cos(a) * 80, cy + Math.sin(a) * 80);
+  }
+
+  const keys = Object.keys(SHAPES);
+  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  currentShape = randomKey;
+  document.querySelectorAll('.shape-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.shape === randomKey);
+  });
+  spawnShapeBurst(cx, cy);
+
+  const flash = document.createElement('div');
+  flash.style.cssText = `position:fixed;inset:0;pointer-events:none;z-index:100;
+    background:radial-gradient(circle at ${cx}px ${cy}px,rgba(249,168,212,0.5),rgba(0,0,0,0) 65%);
+    transition:opacity .9s ease;`;
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => flash.style.opacity = "0");
+  setTimeout(() => flash.remove(), 950);
+
+  shakeScreen(6);
+
+  if (soundEnabled) {
+    playTone(523, 0.25, "triangle", 0.14);
+    playTone(659, 0.25, "triangle", 0.14);
+    playTone(784, 0.25, "triangle", 0.14);
+    playTone(1047, 0.45, "triangle", 0.14);
+  }
+});
+
+window.addEventListener('keydown', e => {
+  const order = ["heart","flower","star","firework","gift","berry","butterfly","mushroom","diamond","random"];
+  const idx = "1234567890".indexOf(e.key);
+  if (idx >= 0) {
+    currentShape = order[idx];
+    document.querySelectorAll('.shape-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.shape === currentShape);
+    });
+  }
+});
+
+/* ============================================================
+   РИСОВАНИЕ ФИГУРАМИ
+   ============================================================ */
+let isDrawing = false;
+let drawTick = 0;
+let drawShapeIdx = 0;
+const DRAW_SHAPES = ["heart", "flower", "star", "berry"];
+
+canvas.addEventListener('mousedown', () => { isDrawing = true; });
+canvas.addEventListener('mouseup',   () => { isDrawing = false; });
+canvas.addEventListener('mouseleave',() => { isDrawing = false; });
+
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  drawTick++;
+  if (drawTick % 8 !== 0) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const key = DRAW_SHAPES[drawShapeIdx % DRAW_SHAPES.length];
+  const shape = SHAPES[key];
+  if (!shape) return;
+  const palette = Math.random() < 0.5 ? PINK_SHADES : BLUE_SHADES;
+  const outline = shape.fn(10);
+  outline.forEach(pt => {
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    burstParticles.push(new CircleParticle(
+      x, y, pt.x * shape.scale * 0.7, pt.y * shape.scale * 0.7, color
+    ));
+  });
+});
+
+setInterval(() => {
+  if (isDrawing) drawShapeIdx++;
+}, 3500);
+
+/* ============================================================
+   КОМБО-СЧЁТЧИК
+   ============================================================ */
+let comboCount = 0;
+let lastComboTime = 0;
+let comboTimer = null;
+const comboDisplay = document.getElementById('comboDisplay');
+
+function showCombo(count) {
+  comboDisplay.textContent = `×${count} COMBO!`;
+  comboDisplay.classList.add('show');
+  clearTimeout(comboDisplay._hideTimer);
+  comboDisplay._hideTimer = setTimeout(() => {
+    comboDisplay.classList.remove('show');
+  }, 1400);
+}
+
+function registerCombo() {
+  const now = performance.now();
+  if (now - lastComboTime < 1600) {
+    comboCount++;
+  } else {
+    comboCount = 1;
+  }
+  lastComboTime = now;
+
+  if (comboCount >= 3) {
+    showCombo(comboCount);
+    for (let i = 0; i < Math.min(comboCount, 8); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const p = new FireworkSpark(mousePos.x, mousePos.y, a, 1 + Math.random() * 2, PINK_SHADES[0]);
+      burstParticles.push(p);
+    }
+  }
+
+  clearTimeout(comboTimer);
+  comboTimer = setTimeout(() => { comboCount = 0; }, 2000);
+}
+
+/* ============================================================
+   ПАСХАЛКА
+   ============================================================ */
+let easterEgg = null;
+let eggTimer = null;
+
+function spawnEasterEgg() {
+  if (easterEgg) return;
+  const egg = document.createElement('div');
+  egg.className = "easter-egg";
+  egg.textContent = "💗";
+  egg.style.left = (Math.random() * (width - 40) + 20) + "px";
+  egg.style.top  = (Math.random() * (height - 100) + 60) + "px";
+  egg.addEventListener('click', () => {
+    const x = parseFloat(egg.style.left) + 11;
+    const y = parseFloat(egg.style.top) + 11;
+
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      spawnFirework(x + Math.cos(a) * 60, y + Math.sin(a) * 60);
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      spawnFirework(x + Math.cos(a) * 120, y + Math.sin(a) * 120);
+    }
+
+    playSecret();
+    shakeScreen(15);
+
+    const flash = document.createElement('div');
+    flash.style.cssText = `position:fixed;inset:0;pointer-events:none;z-index:180;
+      background:radial-gradient(circle at ${x}px ${y}px,
+        rgba(255,255,255,0.7), rgba(244,114,182,0.4) 40%, rgba(0,0,0,0) 75%);
+      transition:opacity 1s ease;`;
+    document.body.appendChild(flash);
+    requestAnimationFrame(() => flash.style.opacity = "0");
+    setTimeout(() => flash.remove(), 1050);
+
+    const label = document.createElement('div');
+    label.textContent = "✨ Секрет найден!";
+    label.style.cssText = `position:fixed;
+      top:50%; left:50%; transform:translate(-50%, -50%) scale(0.6);
+      color:#fde047; font:bold 32px 'Segoe UI',sans-serif;
+      text-shadow:0 0 40px #facc15;
+      pointer-events:none; z-index:200;
+      transition:opacity 1.4s ease, transform 1.4s ease;`;
+    document.body.appendChild(label);
+    requestAnimationFrame(() => {
+      label.style.opacity = "0";
+      label.style.transform = "translate(-50%, -180%) scale(1.5)";
+    });
+    setTimeout(() => label.remove(), 1500);
+
+    egg.remove();
+    easterEgg = null;
+    scheduleNextEgg();
+  });
+
+  document.body.appendChild(egg);
+  easterEgg = egg;
+
+  setTimeout(() => {
+    if (easterEgg === egg) {
+      egg.classList.add('show');
+    }
+  }, 50);
+
+  clearTimeout(eggTimer);
+  eggTimer = setTimeout(() => {
+    if (easterEgg === egg) {
+      egg.style.opacity = "0";
+      setTimeout(() => {
+        if (egg.parentNode) egg.remove();
+        if (easterEgg === egg) easterEgg = null;
+        scheduleNextEgg();
+      }, 600);
+    }
+  }, 20000);
+}
+
+function scheduleNextEgg() {
+  const delay = 60000 + Math.random() * 30000;
+  setTimeout(spawnEasterEgg, delay);
+}
+setTimeout(spawnEasterEgg, 20000);
+
+/* ============================================================
+   СЮЖЕТ: «ПЯТЬ ПИСЕМ ЛЮБВИ»
+   ============================================================ */
+const STORY = [
+  {
+    icon: "💌",
+    chapter: "Глава I · Первое письмо",
+    title: "«Знакомство»",
+    text: "Сначала я просто воспринимала тебя как человека с плохим характером. Меня так раздражали твои ссоры с остальными. Нахал — одним словом.",
+    signature: "Это по началу..."
+  },
+  {
+    icon: "💌",
+    chapter: "Глава II · Второе письмо",
+    title: "«Довольно мило»",
+    text: "В какой-то момент мы стали больше общаться, ты вёл себя так спокойно и дружелюбно. На фоне остальных ты выделялся, как что-то светлое.",
+    signature: "Он не такой уж плохой..."
+  },
+  {
+    icon: "💌",
+    chapter: "Глава III · Третье письмо",
+    title: "«Драгоценность»",
+    text: "После того как все ушли, остался только ты. Я так не хотела, чтобы ты тоже куда-то пропал. Ведь ты стал неотъемлемой частью будничной жизни.",
+    signature: "Лишь ты..."
+  },
+  {
+    icon: "💌",
+    chapter: "Глава IV · Четвёртое письмо",
+    title: "«Это прекрасно»",
+    text: "Каждое твоё сообщение вызывало улыбку на лице. Ты был таким прекрасным. Проведённое с тобой время было волшебным.",
+    signature: "Ты мне нравишься..."
+  },
+  {
+    icon: "💌",
+    chapter: "Глава V · Последнее письмо",
+    title: "«Признание»",
+    text: "Я не ожидала этого... Мне казалось, такое бывает только в сказках. До сих пор я боюсь, что в какой-то момент лампа замигает странным светом...",
+    signature: "Не хочу просыпаться..."
+  }
+];
+
+let currentLetterIndex = 0;
+let collectedLetters = 0;
+let currentLetterEl = null;
+let letterSpawnTimer = null;
+let letterAutoHideTimer = null;
+
+const letterProgressEl = document.getElementById('letterProgress');
+for (let i = 0; i < STORY.length; i++) {
+  const slot = document.createElement('div');
+  slot.className = "letter-slot";
+  slot.dataset.index = i;
+  letterProgressEl.appendChild(slot);
+}
+
+function updateLetterProgress() {
+  document.querySelectorAll('.letter-slot').forEach((slot, i) => {
+    slot.classList.toggle('filled', i < collectedLetters);
+  });
+}
+
+function spawnStoryLetter() {
+  if (currentLetterIndex >= STORY.length) return;
+  if (currentLetterEl) return;
+
+  const letter = document.createElement('div');
+  letter.className = "letter";
+  letter.textContent = "💌";
+  letter.style.left = (Math.random() * (width - 80) + 40) + "px";
+  letter.style.top  = (Math.random() * (height - 160) + 80) + "px";
+
+  letter.addEventListener('click', () => {
+    openStoryLetter(currentLetterIndex);
+    letter.remove();
+    currentLetterEl = null;
+  });
+
+  document.body.appendChild(letter);
+  currentLetterEl = letter;
+
+  setTimeout(() => letter.classList.add('show'), 50);
+
+  clearTimeout(letterAutoHideTimer);
+  letterAutoHideTimer = setTimeout(() => {
+    if (currentLetterEl === letter) {
+      letter.style.opacity = "0";
+      setTimeout(() => {
+        if (letter.parentNode) letter.remove();
+        if (currentLetterEl === letter) currentLetterEl = null;
+        scheduleNextStoryLetter();
+      }, 800);
+    }
+  }, 25000);
+}
+
+function scheduleNextStoryLetter() {
+  if (currentLetterIndex >= STORY.length) return;
+  const delay = 25000 + Math.random() * 20000;
+  letterSpawnTimer = setTimeout(spawnStoryLetter, delay);
+}
+
+const letterModal = document.getElementById('letterModal');
+const letterCard = document.getElementById('letterCard');
+const letterIcon = document.getElementById('letterIcon');
+const letterChapter = document.getElementById('letterChapter');
+const letterTitle = document.getElementById('letterTitle');
+const letterText = document.getElementById('letterText');
+const letterSignature = document.getElementById('letterSignature');
+const letterNext = document.getElementById('letterNext');
+
+function openStoryLetter(index) {
+  const data = STORY[index];
+  if (!data) return;
+
+  letterIcon.textContent = data.icon;
+  letterChapter.textContent = data.chapter;
+  letterTitle.textContent = data.title;
+  letterText.textContent = "";
+  letterSignature.textContent = data.signature;
+  letterCard.classList.remove('signed');
+
+  letterModal.classList.add('open');
+
+  typeText(letterText, data.text, 25);
+
+  setTimeout(() => letterCard.classList.add('signed'), data.text.length * 25 + 400);
+
+  if (soundEnabled) {
+    playTone(659, 0.3, "sine", 0.10);
+    playTone(880, 0.3, "sine", 0.10);
+    playTone(1047, 0.5, "sine", 0.10);
+  }
+}
+
+function typeText(el, text, speed) {
+  el.textContent = "";
+  let i = 0;
+  clearInterval(el._typeTimer);
+  el._typeTimer = setInterval(() => {
+    el.textContent += text[i];
+    i++;
+    if (i >= text.length) clearInterval(el._typeTimer);
+  }, speed);
+}
+
+letterNext.addEventListener('click', () => {
+  letterModal.classList.remove('open');
+  clearInterval(letterText._typeTimer);
+
+  currentLetterIndex++;
+  collectedLetters = Math.min(collectedLetters + 1, STORY.length);
+  updateLetterProgress();
+
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    spawnFirework(width/2 + Math.cos(a) * 60, height/2 + Math.sin(a) * 60);
+  }
+  shakeScreen(5);
+
+  if (currentLetterIndex >= STORY.length) {
+    setTimeout(openFinale, 1500);
+  } else {
+    scheduleNextStoryLetter();
+  }
+});
+
+letterModal.addEventListener('click', e => {
+  if (e.target === letterModal) {
+    letterModal.classList.remove('open');
+    clearInterval(letterText._typeTimer);
+    scheduleNextStoryLetter();
+  }
+});
+
+/* Финальная сцена */
+const finaleEl = document.getElementById('finale');
+const finaleClose = document.getElementById('finaleClose');
+
+function openFinale() {
+  finaleEl.classList.add('open');
+
+  for (let i = 0; i < 12; i++) {
+    setTimeout(() => {
+      const x = Math.random() * width;
+      const y = Math.random() * height * 0.6 + 40;
+      spawnFirework(x, y);
+    }, i * 200);
+  }
+  shakeScreen(10);
+
+  if (soundEnabled) {
+    playTone(523, 0.4, "triangle", 0.14);
+    playTone(659, 0.4, "triangle", 0.14);
+    playTone(784, 0.4, "triangle", 0.14);
+    playTone(1047, 0.6, "triangle", 0.14);
+  }
+}
+
+finaleClose.addEventListener('click', () => {
+  finaleEl.classList.remove('open');
+});
+
+/* Кнопка перезапуска сюжета */
+const replayBtn = document.getElementById('replayBtn');
+replayBtn.addEventListener('click', () => {
+  currentLetterIndex = 0;
+  collectedLetters = 0;
+  updateLetterProgress();
+
+  if (currentLetterEl) {
+    currentLetterEl.remove();
+    currentLetterEl = null;
+  }
+  clearTimeout(letterSpawnTimer);
+  clearTimeout(letterAutoHideTimer);
+
+  letterModal.classList.remove('open');
+  finaleEl.classList.remove('open');
+
+  setTimeout(spawnStoryLetter, 3000);
+
+  if (soundEnabled) playTone(880, 0.3, "sine", 0.10);
+});
+
+/* Автозапуск сюжета */
+setTimeout(spawnStoryLetter, 8000);
+
+/* ============================================================
+   АВТО-ФЕЙЕРВЕРК
+   ============================================================ */
+let autoEnabled = true;
+const autoBtn = document.getElementById('autoBtn');
+autoBtn.addEventListener('click', () => {
+  autoEnabled = !autoEnabled;
+  autoBtn.classList.toggle('active', autoEnabled);
+});
+function autoFireworkLoop() {
+  if (autoEnabled && !document.hidden) {
+    const x = Math.random() * width * 0.6 + width * 0.2;
+    const y = Math.random() * height * 0.5 + height * 0.15;
+    const palette = Math.random() < 0.5 ? PINK_SHADES : BLUE_SHADES;
+    const COUNT = Math.floor(25 * quality);
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+      const speed = 1.2 + Math.random() * 1.8;
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      burstParticles.push(new FireworkSpark(x, y, angle, speed, color));
+    }
+    burstParticles.push(new FireworkFlash(x, y, palette[1]));
+  }
+  setTimeout(autoFireworkLoop, 7000 + Math.random() * 8000);
+}
+setTimeout(autoFireworkLoop, 8000);
+
+/* ============================================================
+   ЗВУК
+   ============================================================ */
+const soundPrompt = document.getElementById('soundPrompt');
+const musicBtn = document.getElementById('musicBtn');
+
+function enableSound() {
+  initAudio();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  soundEnabled = true;
+  startMusic();
+  musicBtn.classList.add('active');
+  if (soundPrompt.parentNode) soundPrompt.remove();
+}
+soundPrompt.addEventListener('click', enableSound);
+soundPrompt.style.display = "block";
+
+musicBtn.addEventListener('click', () => {
+  if (!soundEnabled) { enableSound(); return; }
+  if (musicPlaying) { stopMusic(); musicBtn.classList.remove('active'); }
+  else { startMusic(); musicBtn.classList.add('active'); }
+});
+
+/* ============================================================
+   СЕЗОНЫ + РАДУЖНЫЙ РЕЖИМ
+   ============================================================ */
+let seasonIdx = 0;
+const seasonBtn = document.getElementById('seasonBtn');
+seasonBtn.addEventListener('click', () => {
+  seasonIdx = (seasonIdx + 1) % SEASON_ORDER.length;
+  currentSeason = SEASON_ORDER[seasonIdx];
+  PINK_SHADES = SEASONS[currentSeason].pink;
+  BLUE_SHADES = SEASONS[currentSeason].blue;
+  seasonBtn.textContent = SEASONS[currentSeason].name;
+  restartMusicIfPlaying();
+});
+
+const rainbowBtn = document.getElementById('rainbowBtn');
+rainbowBtn.addEventListener('click', () => {
+  rainbowMode = !rainbowMode;
+  rainbowBtn.classList.toggle('active', rainbowMode);
+  if (rainbowMode && soundEnabled) playTone(880, 0.3, "sine", 0.10);
+});
+
+/* ============================================================
+   КНОПКА ПРИЗНАНИЙ
+   ============================================================ */
+const lyricsBtn = document.getElementById('lyricsBtn');
+lyricsBtn.addEventListener('click', () => {
+  if (confessionModal.classList.contains('open')) {
+    closeConfessions();
+  } else {
+    openConfessions();
+  }
+});
+
+/* ============================================================
+   КЛИКИ
+   ============================================================ */
+function handleClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+  registerCombo();
+  spawnShapeBurst(x, y);
+}
+canvas.addEventListener('click', handleClick);
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  handleClick(e);
+}, { passive: false });
+
+canvas.addEventListener('dblclick', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    spawnFirework(x + Math.cos(a) * 30, y + Math.sin(a) * 30);
+  }
+  spawnShapeBurst(x, y);
+  shakeScreen(8);
+
+  const flash = document.createElement('div');
+  flash.style.cssText = `position:fixed;inset:0;pointer-events:none;z-index:100;
+    background:radial-gradient(circle at ${x}px ${y}px,rgba(249,168,212,0.45),rgba(0,0,0,0) 60%);
+    transition:opacity .8s ease;`;
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => flash.style.opacity = "0");
+  setTimeout(() => flash.remove(), 850);
+});
+
+let running = true;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) running = false;
+  else if (!running) { running = true; requestAnimationFrame(animate); }
+});
+
+/* ============================================================
+   КНОПКА ПОМОЩИ
+   ============================================================ */
+const helpBtn = document.getElementById('helpBtn');
+const helpOverlay = document.getElementById('helpOverlay');
+const helpClose = document.getElementById('helpClose');
+
+function openHelp()  { helpOverlay.classList.add('open'); }
+function closeHelp() { helpOverlay.classList.remove('open'); }
+function toggleHelp() {
+  if (helpOverlay.classList.contains('open')) closeHelp();
+  else openHelp();
+}
+
+helpBtn.addEventListener('click', toggleHelp);
+helpClose.addEventListener('click', closeHelp);
+
+helpOverlay.addEventListener('click', e => {
+  if (e.target === helpOverlay) closeHelp();
+});
+
+window.addEventListener('keydown', e => {
+  if (e.code === "Escape") {
+    if (helpOverlay.classList.contains('open')) {
+      e.stopPropagation();
+      closeHelp();
+    } else if (confessionModal.classList.contains('open')) {
+      e.stopPropagation();
+      closeConfessions();
+    } else if (letterModal.classList.contains('open')) {
+      e.stopPropagation();
+      letterModal.classList.remove('open');
+      clearInterval(letterText._typeTimer);
+      scheduleNextStoryLetter();
+    } else if (finaleEl.classList.contains('open')) {
+      e.stopPropagation();
+      finaleEl.classList.remove('open');
+    }
+  }
+});
+
+setTimeout(() => {
+  helpBtn.style.animation = "pulse 1.6s ease-in-out 3";
+  setTimeout(() => helpBtn.style.animation = "", 4800);
+}, 6000);
+
+/* ============================================================
+   АНИМАЦИЯ
+   ============================================================ */
+function animate() {
+  if (!running) return;
+  trackFps();
+
+  if (shakeAmount > 0.1) {
+    ctx.save();
+    const dx = (Math.random() - 0.5) * shakeAmount;
+    const dy = (Math.random() - 0.5) * shakeAmount;
+    ctx.translate(dx, dy);
+  }
+
+  ctx.fillStyle = 'rgba(10, 0, 8, 0.12)';
+  ctx.fillRect(-20, -20, width + 40, height + 40);
+
+  ctx.globalCompositeOperation = "lighter";
+  for (const g of glows) { g.update(); g.draw(ctx); }
+  ctx.globalCompositeOperation = "source-over";
+
+  for (const s of stars) { s.update(); s.draw(ctx); }
+  for (const b of bubbles) { b.update(); b.draw(ctx); }
+
+  for (let i = floatParticles.length - 1; i >= 0; i--) {
+    const p = floatParticles[i];
+    p.update(); p.draw(ctx);
+    if (p.dead) floatParticles[i] = new Particle(Math.random() * width, height + 20);
+  }
+
+  for (let i = burstParticles.length - 1; i >= 0; i--) {
+    const p = burstParticles[i];
+    const isFirework = (p instanceof FireworkSpark) || (p instanceof FireworkFlash);
+    ctx.globalCompositeOperation = isFirework ? "lighter" : "source-over";
+    p.update(); p.draw(ctx);
+    if (p.dead) burstParticles.splice(i, 1);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  for (let i = textParticles.length - 1; i >= 0; i--) {
+    const t = textParticles[i];
+    t.update(); t.draw(ctx);
+    if (t.dead) textParticles.splice(i, 1);
+  }
+
+  if (shakeAmount > 0.1) {
+    ctx.restore();
+    shakeAmount *= 0.85;
+    if (shakeAmount < 0.1) shakeAmount = 0;
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
